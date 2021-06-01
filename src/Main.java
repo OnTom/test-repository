@@ -12,6 +12,6 @@ public class Main {
 
     public static void cheer(String name){
 
-        System.out.println ("Hello Python team member, " + name);
+        System.out.println ("Cheer for the " + name);
     }
 }
