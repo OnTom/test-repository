@@ -6,8 +6,8 @@ public class Main {
         cheer (name);
 
     }
-    public static void future(String name) {
-        System.out.println("Hello " + name + ". What about horoscope sign Horse?");
+    public static void future(String name, Integer age) {
+        System.out.println("Hello " + name + ". You are " + age + " years old. What about horoscope sign Horse?");
     }
 
     public static void cheer(String name){
