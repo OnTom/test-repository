@@ -6,8 +6,8 @@ public class Main {
         cheer (name);
 
     }
-    public static void future() {
-        System.out.println("Libra");
+    public static void future(String name) {
+        System.out.println("Hello " + name + ". What about horoscope sign Libra?");
     }
 
     public static void cheer(String name){
