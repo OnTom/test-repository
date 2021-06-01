@@ -5,9 +5,11 @@ public class Main {
 
         cheer (name);
 
+        future("something");
+
     }
     public static void future(String name) {
-        System.out.println("Hello " + name + ". What about horoscope sign Libra?");
+        System.out.println("'Your future looks like" + name);
     }
 
     public static void cheer(String name){
