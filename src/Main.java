@@ -12,7 +12,7 @@ public class Main {
     }
 
     public static void cheer(String firstName, String lastName){
+        System.out.println ("Cheer for the " + firstName + " " + lastName);
 
-        System.out.println ("Hello Python team member, " + firstName + lastName);
     }
 }
