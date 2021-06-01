@@ -6,6 +6,9 @@ public class Main {
         cheer (name);
 
     }
+    public static void future() {
+        System.out.println("Libra");
+    }
 
     public static void cheer(String name){
 
