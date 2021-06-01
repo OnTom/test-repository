@@ -1,2 +1,6 @@
-package PACKAGE_NAME;public class MartinsClass {
+public class MartinsClass {
+
+    public void greet(){
+        System.out.println("Martin");
+    }
 }
