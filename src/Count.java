@@ -1,10 +1,10 @@
 public class Count {
 
     public static void main(String[] args) {
-        count();
+        count(25);
     }
 
-    private static void count() {
-        System.out.println(25);
+    private static void count(int age) {
+        System.out.println(age);
     }
 }
