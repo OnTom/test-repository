@@ -7,7 +7,7 @@ public class Main {
 
     }
     public static void future(String name) {
-        System.out.println("Hello " + name + ". What about horoscope sign Libra?");
+        System.out.println("Hello " + name + ". What about horoscope sign Horse?");
     }
 
     public static void cheer(String name){
