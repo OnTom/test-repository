@@ -3,6 +3,6 @@ public class Greet {
         greet("Martin");
     }
     public static void greet(String string){
-        System.out.println("Greetings " + string + "!");
+        System.out.println("Greetings for the " + string);
     }
 }
