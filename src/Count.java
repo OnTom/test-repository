@@ -6,5 +6,6 @@ public class Count {
 
     private static void count(int age) {
         System.out.println(age);
+        System.out.println (age++);
     }
 }
