@@ -11,7 +11,7 @@ public class Main {
     }
 
     public static void future(String name) {
-        System.out.println("'Your future looks like" + name);
+        System.out.println("Your future looks like" + name);
     }
 
     public static void cheer(String firstName, String lastName){
