@@ -6,9 +6,12 @@ public class Main {
 
         cheer (firstName,lastname);
 
+        future("something");
+
     }
-    public static void future(String name, Integer age) {
-        System.out.println("Hello " + name + ". You are " + age + " years old. What about horoscope sign Horse?");
+
+    public static void future(String name) {
+        System.out.println("Your future looks like" + name);
     }
 
     public static void cheer(String firstName, String lastName){
