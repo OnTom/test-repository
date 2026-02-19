@@ -1,36 +1,42 @@
 """
-UI komponenty pro Deutsch Klicker.
+UI komponenty pro Deutsch Klicker – battle verze.
 """
 
 import pygame
-from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Optional
 
 # ---------------------------------------------------------------------------
-# Barvy
+# Barvy (temná cave paleta)
 # ---------------------------------------------------------------------------
-WHITE      = (255, 255, 255)
-BLACK      = (0,   0,   0)
-DARK_BG    = (30,  30,  50)
-PANEL_BG   = (45,  45,  70)
+WHITE       = (255, 255, 255)
+BLACK       = (0,   0,   0)
+DARK_BG     = (28,  20,  38)
+PANEL_BG    = (42,  32,  52)
+PANEL_EDGE  = (75,  55,  90)
 
-CORRECT_COLOR  = (80,  200, 120)   # zelená
-WRONG_COLOR    = (220,  60,  60)   # červená
-NEUTRAL_COLOR  = (100, 120, 200)   # modrá (výchozí tlačítko)
-HOVER_COLOR    = (130, 150, 230)
-DISABLED_COLOR = (80,  80, 100)
+CORRECT_COLOR  = (80,  200, 120)
+WRONG_COLOR    = (220,  60,  60)
+NEUTRAL_COLOR  = (80,  100, 170)
+HOVER_COLOR    = (110, 135, 210)
+DISABLED_COLOR = (55,   55,  75)
 
-GOLD    = (255, 215,   0)
-SILVER  = (192, 192, 192)
-TEXT_LT = (230, 230, 255)
-TEXT_DK = (40,   40,  60)
+GOLD    = (255, 210,  60)
+SILVER  = (180, 180, 200)
+TEXT_LT = (220, 210, 240)
+TEXT_DK = (40,   30,  55)
+
+HP_GREEN  = (70,  200,  80)
+HP_YELLOW = (220, 190,  40)
+HP_RED    = (210,  55,  55)
+HP_BG     = (30,   30,  45)
+
+CURSOR_COLOR = (200, 200, 255)
 
 
 # ---------------------------------------------------------------------------
 # Pomocné funkce
 # ---------------------------------------------------------------------------
 def load_font(size: int, bold: bool = False) -> pygame.font.Font:
-    """Načte systémový font; fallback na pygame výchozí."""
     try:
         return pygame.font.SysFont("dejavu sans", size, bold=bold)
     except Exception:
@@ -38,33 +44,36 @@ def load_font(size: int, bold: bool = False) -> pygame.font.Font:
 
 
 def draw_rounded_rect(surface: pygame.Surface, color, rect: pygame.Rect,
-                      radius: int = 14) -> None:
+                      radius: int = 12) -> None:
     pygame.draw.rect(surface, color, rect, border_radius=radius)
 
 
 def draw_text_centered(surface: pygame.Surface, text: str, font: pygame.font.Font,
                        color, cx: int, cy: int) -> pygame.Rect:
-    """Vykreslí text vycentrovaný kolem bodu (cx, cy)."""
     rendered = font.render(text, True, color)
     rect = rendered.get_rect(center=(cx, cy))
     surface.blit(rendered, rect)
     return rect
 
 
+def draw_text_left(surface: pygame.Surface, text: str, font: pygame.font.Font,
+                   color, x: int, y: int) -> pygame.Rect:
+    rendered = font.render(text, True, color)
+    rect = rendered.get_rect(topleft=(x, y))
+    surface.blit(rendered, rect)
+    return rect
+
+
 # ---------------------------------------------------------------------------
-# Třída Button
+# Button
 # ---------------------------------------------------------------------------
 class Button:
-    """
-    Klikatelné tlačítko s animací při najetí myší a barevnou odezvou.
-    """
-
     def __init__(self, rect: pygame.Rect, text: str,
                  font: pygame.font.Font,
                  base_color=NEUTRAL_COLOR,
                  hover_color=HOVER_COLOR,
                  text_color=WHITE,
-                 radius: int = 14):
+                 radius: int = 12):
         self.rect        = rect
         self.text        = text
         self.font        = font
@@ -72,14 +81,11 @@ class Button:
         self.hover_color = hover_color
         self.text_color  = text_color
         self.radius      = radius
-
-        self.current_color = base_color
-        self.feedback_color: Optional[tuple] = None  # přechodná barva (správně/špatně)
-        self.feedback_timer: int = 0                 # ms zbývající pro feedback
-        self.enabled: bool = True
+        self.enabled     = True
+        self._feedback_color: Optional[tuple] = None
+        self._feedback_timer = 0
 
     def handle_event(self, event: pygame.event.Event) -> bool:
-        """Vrátí True, pokud bylo tlačítko kliknuto."""
         if not self.enabled:
             return False
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -88,169 +94,174 @@ class Button:
         return False
 
     def set_feedback(self, correct: bool, duration_ms: int = 600) -> None:
-        """Zobrazí zelenou/červenou barvu jako odezvu na klik."""
-        self.feedback_color = CORRECT_COLOR if correct else WRONG_COLOR
-        self.feedback_timer = duration_ms
+        self._feedback_color = CORRECT_COLOR if correct else WRONG_COLOR
+        self._feedback_timer = duration_ms
         self.enabled = False
 
     def reset(self) -> None:
-        self.feedback_color = None
-        self.feedback_timer = 0
+        self._feedback_color = None
+        self._feedback_timer = 0
         self.enabled = True
-        self.current_color = self.base_color
 
     def update(self, dt: int, mouse_pos: tuple) -> None:
-        """Aktualizuje animace; dt je čas od posledního snímku v ms."""
-        if self.feedback_timer > 0:
-            self.feedback_timer = max(0, self.feedback_timer - dt)
-            if self.feedback_timer == 0:
-                self.feedback_color = None
-        if not self.enabled:
-            self.current_color = self.feedback_color or DISABLED_COLOR
-        elif self.rect.collidepoint(mouse_pos):
-            self.current_color = self.hover_color
-        else:
-            self.current_color = self.base_color
+        if self._feedback_timer > 0:
+            self._feedback_timer = max(0, self._feedback_timer - dt)
+            if self._feedback_timer == 0:
+                self._feedback_color = None
 
-    def draw(self, surface: pygame.Surface) -> None:
-        color = self.feedback_color if self.feedback_color else self.current_color
+    def draw(self, surface: pygame.Surface, mouse_pos: tuple | None = None) -> None:
+        if self._feedback_color:
+            color = self._feedback_color
+        elif not self.enabled:
+            color = DISABLED_COLOR
+        elif mouse_pos and self.rect.collidepoint(mouse_pos):
+            color = self.hover_color
+        else:
+            color = self.base_color
+
         draw_rounded_rect(surface, color, self.rect, self.radius)
-        # Ohraničení
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=self.radius)
         draw_text_centered(surface, self.text, self.font,
-                           self.text_color,
-                           self.rect.centerx, self.rect.centery)
+                           self.text_color, self.rect.centerx, self.rect.centery)
 
 
 # ---------------------------------------------------------------------------
-# Třída TimerBar
+# HealthBar – healthbar postavy
 # ---------------------------------------------------------------------------
-class TimerBar:
-    """
-    Vodorovný ukazatel zbývajícího času.
-    Barva plynule přechází zelená → žlutá → červená.
-    """
-
-    def __init__(self, rect: pygame.Rect, max_ms: int):
-        self.rect   = rect
-        self.max_ms = max_ms
-        self.remaining_ms = max_ms
-
-    def reset(self, max_ms: Optional[int] = None) -> None:
-        if max_ms is not None:
-            self.max_ms = max_ms
-        self.remaining_ms = self.max_ms
-
-    def update(self, dt: int) -> bool:
+class HealthBar:
+    def __init__(self, rect: pygame.Rect, font: pygame.font.Font,
+                 label: str = "", align: str = "left"):
         """
-        Odečte dt ms. Vrátí True, pokud čas vypršel.
+        align: "left" = label vlevo, "right" = label vpravo (pro nepřítele)
         """
-        self.remaining_ms = max(0, self.remaining_ms - dt)
-        return self.remaining_ms == 0
+        self.rect    = rect
+        self.font    = font
+        self.label   = label
+        self.align   = align
+        self.hp      = 100
+        self.max_hp  = 100
+
+    def set_hp(self, hp: int, max_hp: int) -> None:
+        self.hp     = max(0, hp)
+        self.max_hp = max_hp
 
     def draw(self, surface: pygame.Surface) -> None:
-        ratio = self.remaining_ms / self.max_ms if self.max_ms > 0 else 0
+        ratio = self.hp / self.max_hp if self.max_hp > 0 else 0
+
+        # Barva HP
+        if ratio > 0.5:
+            hp_color = HP_GREEN
+        elif ratio > 0.25:
+            hp_color = HP_YELLOW
+        else:
+            hp_color = HP_RED
 
         # Pozadí
-        draw_rounded_rect(surface, PANEL_BG, self.rect, 8)
+        draw_rounded_rect(surface, HP_BG, self.rect, 6)
 
-        # Zbývající část
+        # Výplň
         if ratio > 0:
             filled = self.rect.copy()
-            filled.width = int(self.rect.width * ratio)
-            # Barva: zelená → žlutá → červená
-            if ratio > 0.5:
-                r = int(255 * (1 - ratio) * 2)
-                g = 200
+            filled.width = max(0, int(self.rect.width * ratio))
+            if filled.width > 0:
+                draw_rounded_rect(surface, hp_color, filled, 6)
+
+        pygame.draw.rect(surface, SILVER, self.rect, 2, border_radius=6)
+
+        # Text HP
+        hp_text = f"{self.hp}/{self.max_hp}"
+        draw_text_centered(surface, hp_text, self.font, WHITE,
+                           self.rect.centerx, self.rect.centery)
+
+        # Label nad/pod barem vykreslíme z venku (game.py)
+
+
+# ---------------------------------------------------------------------------
+# TextInput – textové pole pro překlad
+# ---------------------------------------------------------------------------
+class TextInput:
+    def __init__(self, rect: pygame.Rect, font: pygame.font.Font,
+                 placeholder: str = "Napiš odpověď..."):
+        self.rect        = rect
+        self.font        = font
+        self.placeholder = placeholder
+        self.text        = ""
+        self.active      = True
+        self._cursor_visible = True
+        self._cursor_timer   = 0
+
+    def clear(self) -> None:
+        self.text = ""
+
+    def handle_event(self, event: pygame.event.Event) -> bool:
+        """Vrátí True při stisknutí Enter (= potvrzení vstupu)."""
+        if not self.active:
+            return False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
+                return True
+            elif event.key == pygame.K_BACKSPACE:
+                self.text = self.text[:-1]
+            elif event.key == pygame.K_ESCAPE:
+                self.text = ""
             else:
-                r = 220
-                g = int(200 * ratio * 2)
-            bar_color = (r, g, 40)
-            draw_rounded_rect(surface, bar_color, filled, 8)
-
-        pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=8)
-
-
-# ---------------------------------------------------------------------------
-# Třída ScoreDisplay
-# ---------------------------------------------------------------------------
-class ScoreDisplay:
-    """Animované zobrazení skóre s vizuálním pulzem při změně."""
-
-    def __init__(self, x: int, y: int, font: pygame.font.Font):
-        self.x     = x
-        self.y     = y
-        self.font  = font
-        self.score = 0
-        self._pulse_timer = 0
-        self._pulse_scale = 1.0
-
-    def set_score(self, score: int) -> None:
-        if score != self.score:
-            self.score = score
-            self._pulse_timer = 300  # ms
+                char = event.unicode
+                if char and char.isprintable():
+                    self.text += char
+        return False
 
     def update(self, dt: int) -> None:
-        if self._pulse_timer > 0:
-            self._pulse_timer = max(0, self._pulse_timer - dt)
-            t = self._pulse_timer / 300
-            self._pulse_scale = 1.0 + 0.25 * t
+        self._cursor_timer += dt
+        if self._cursor_timer >= 500:
+            self._cursor_timer = 0
+            self._cursor_visible = not self._cursor_visible
+
+    def draw(self, surface: pygame.Surface) -> None:
+        # Pozadí
+        draw_rounded_rect(surface, (20, 15, 30), self.rect, 8)
+        pygame.draw.rect(surface, CURSOR_COLOR if self.active else SILVER,
+                         self.rect, 2, border_radius=8)
+
+        # Text nebo placeholder
+        if self.text:
+            content = self.text
+            color   = WHITE
         else:
-            self._pulse_scale = 1.0
+            content = self.placeholder
+            color   = (100, 95, 120)
 
-    def draw(self, surface: pygame.Surface) -> None:
-        text = f"Skóre: {self.score}"
-        rendered = self.font.render(text, True, GOLD)
-        if self._pulse_scale != 1.0:
-            w = int(rendered.get_width() * self._pulse_scale)
-            h = int(rendered.get_height() * self._pulse_scale)
-            rendered = pygame.transform.smoothscale(rendered, (w, h))
-        rect = rendered.get_rect(center=(self.x, self.y))
-        surface.blit(rendered, rect)
+        # Kurzor
+        display = content
+        if self.active and self._cursor_visible and self.text is not None:
+            display = self.text + "|"
+            color   = WHITE
 
-
-# ---------------------------------------------------------------------------
-# Třída LivesDisplay
-# ---------------------------------------------------------------------------
-class LivesDisplay:
-    """Zobrazení životů jako srdíčka."""
-
-    HEART_FULL  = "♥"
-    HEART_EMPTY = "♡"
-
-    def __init__(self, x: int, y: int, font: pygame.font.Font, max_lives: int = 3):
-        self.x         = x
-        self.y         = y
-        self.font      = font
-        self.max_lives = max_lives
-        self.lives     = max_lives
-
-    def draw(self, surface: pygame.Surface) -> None:
-        hearts = (self.HEART_FULL * self.lives +
-                  self.HEART_EMPTY * (self.max_lives - self.lives))
-        color = CORRECT_COLOR if self.lives > 1 else WRONG_COLOR
-        draw_text_centered(surface, hearts, self.font, color, self.x, self.y)
+        rendered = self.font.render(display, True, color)
+        text_rect = rendered.get_rect(midleft=(self.rect.x + 12,
+                                               self.rect.centery))
+        # Ořez na šířku pole
+        surface.set_clip(self.rect.inflate(-4, -4))
+        surface.blit(rendered, text_rect)
+        surface.set_clip(None)
 
 
 # ---------------------------------------------------------------------------
-# Třída MessageOverlay
+# MessageOverlay
 # ---------------------------------------------------------------------------
 class MessageOverlay:
-    """
-    Přechodná zpráva uprostřed obrazovky (např. „Správně!", „Špatně!").
-    """
-
     def __init__(self, font: pygame.font.Font):
         self.font    = font
         self.text    = ""
         self.color   = WHITE
         self.timer   = 0
         self.visible = False
+        self._max    = 1000
 
-    def show(self, text: str, color=WHITE, duration_ms: int = 900) -> None:
+    def show(self, text: str, color=WHITE, duration_ms: int = 1200) -> None:
         self.text    = text
         self.color   = color
         self.timer   = duration_ms
+        self._max    = duration_ms
         self.visible = True
 
     def update(self, dt: int) -> None:
@@ -262,10 +273,10 @@ class MessageOverlay:
     def draw(self, surface: pygame.Surface) -> None:
         if not self.visible:
             return
-        alpha = min(255, int(255 * self.timer / 900))
+        alpha = min(255, int(255 * self.timer / max(1, self._max)))
         rendered = self.font.render(self.text, True, self.color)
         rendered.set_alpha(alpha)
         cx = surface.get_width() // 2
-        cy = surface.get_height() // 2 - 60
+        cy = surface.get_height() // 2 - 40
         rect = rendered.get_rect(center=(cx, cy))
         surface.blit(rendered, rect)
